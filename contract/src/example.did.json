@@ -1,0 +1,47 @@
+{
+  "@context": [
+    "https://www.w3.org/ns/did/v1",
+    "https://w3id.org/security/suites/ed25519-2020/v1"
+  ],
+  "id": "did:midnight:d36d6f76-e463-4e48-a97e-908edaee6453",
+  "updated": "2019-06-30T12:00:00Z",
+  "authentication": [
+    "did:midnight:d36d6f76-e463-4e48-a97e-908edaee6453#keys-1",
+    {
+      "id": "did:midnight:d36d6f76-e463-4e48-a97e-908edaee6453#keys-2",
+      "type": "BIP32-Ed25519",
+      "controller": [
+        "did:midnight:5Ee76017be7F983a520a778B413758A9DB49cBe9",
+        "did:midnight:9861eE37Ede3dCab070DF227155D86A7438d8Ed2"
+      ],
+      "publicKeyHex": "0x03a835599850544b4c0a222d594be5d59cf298f5a3fd90bff1c8caa064523745f3"
+    }
+  ],
+  "verificationMethod": [
+    {
+      "id": "did:midnight:d36d6f76-e463-4e48-a97e-908edaee6453#keys-1",
+      "type": "BIP32-Ed25519",
+      "controller": "did:midnight:d36d6f76-e463-4e48-a97e-908edaee6453",
+      "publicKeyHex": "0xfbf38de9fb40edcdab412094d24fa39a314f3d3f52f5860e2509c32522eda30161fe70dfc9f90434d64bd976ede4f112d4f2d8e34d28fe48281663219d2ddac6"
+    },
+    {
+      "id": "did:midnight:d36d6f76-e463-4e48-a97e-908edaee6453#keys-1",
+      "type": "BIP32-Ed25519",
+      "controller": "did:midnight:d36d6f76-e463-4e48-a97e-908edaee6453",
+      "AdaAddress": "addr1qxjq9aj8hy29jkp9dxeepe88ksayl4kqw7qe8et33j6ucxmj2ldj3f0f2l3xrk8ep7hwvde3wa8l9w4wkp8wxfshta2sya6pxt"
+    }
+  ],
+  "service": [
+    {
+      "id": "did:midnight:d36d6f76-e463-4e48-a97e-908edaee6453#some-service",
+      "type": "SomeServiceType",
+      "serviceEndpoint": "Some URL"
+    }
+  ],
+  "credentials": [
+    {
+      "data": "debc879591e984d2f7521a414d1264a79135ea62fe97ad7abfffbaa2efd485ca",
+      "publicKeyMultibase": "-----BEGIN RSA PUBLIC KEY-----\nMIIBCgKCAQEAs7Z/wvbS0Cg2AkdPJJ/cd8inoNUNJAZAIUlJPosyVruwMHLT707+\n6VTzV4qSQRMVQ1IJe22hQGLYqGvdN6TrXU5X3DsyyJxkBgHd35tOTSrUZDKOS7gX\n+yfj6YqRZvi+2Xfegj5kJX2hT/EOfYWO1KbFpjM+zovOQ9Um/ljwWsj9019Wv76m\nWhlpepKnR7k8tjHLdlM6iksbQltEpq79r2HEYj9hRKCoV5d1uWYd7906K1asN0zh\n8XroQESwu8Tp/kIhvXyP4WjxOJj2lh5ZpjtrJ3Qbk9ZPF7KNcAmEgqBo6fDz1Z9Q\ndlp6HTc2xuKPN1h913i5GdamCHpHphucMwIDAQAB\n-----END RSA PUBLIC KEY-----\n"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+export sealed ledger default_context: Context; 
+export sealed ledger default_pubkey: Bytes<32>;
+
+// In the future this should be a Date instead of a bool
+// export ledger did_created: Map<Bytes<64>, Maybe<Date>>;
+// export ledger did_registered: Map<Bytes<64>, Maybe<Date>>;
+
+export ledger did_last_updated: Map<Bytes<64>, Maybe<Date>>;
+export ledger did_deactivated: Map<Bytes<64>, Maybe<Date>>;  
+
+export ledger did_context: Map<Bytes<64>, List<Context>>;  
+
+export ledger did_authentication_methods: Map<Bytes<64>, List<Either<Opaque<'string'>, VerificationMethod>>>;
+
+export ledger did_verification_methods: Map<Bytes<64>, List<VerificationMethod>>;
+
+export ledger did_services: Map<Bytes<64>, List<Service>>;
+
+export ledger did_credentials: Map<Bytes<64>, List<Credential>>;
+
+export ledger did_authorized_controllers: Map<Bytes<64>, Set<Bytes<32>>>;

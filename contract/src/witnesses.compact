@@ -1,0 +1,3 @@
+witness local_secret_key(): Bytes<32>;
+witness multiple_local_secret_keys(): Vector<5, Bytes<32>>;
+

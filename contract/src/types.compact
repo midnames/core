@@ -1,0 +1,76 @@
+struct Context {
+    uri: Opaque<'string'>, 
+}
+
+struct Date {
+    // NOTE: This is not being used yet.
+    // We assume ISO 8601 format for simplicity
+    // If last byte is not Z, throw an error
+    // YYYY-MM-DDTHH:MM:SSZ 
+    // ^------20 bytes----^ 
+    // We could make this more compact only saving 20250531T180259Z (16 bytes / 14 bytes without T & Z)
+    iso_8601_utc: Bytes<20>, 
+}
+
+struct PublicKeyHex {
+  // BLAKE2b-512 - 128 bits + 0x prefix = 130 bytes
+  // TODO: Maybe remove 0x to save space?
+  hex: Bytes<130>,  
+}
+
+struct AdaAddress {
+  address: Bytes<104>,  // ADA address
+}
+
+struct VerificationMethod {
+  // We save the id as only the suffix of the "true" id:
+  // "true id": did:midnight:d36d6f76-e463-4e48-a97e-908edaee6453#keys-1
+  // suffix: keys-1 ----------------------------------------------^^^^^^
+  id: Opaque<'string'>,  
+  
+  // We're not sure if we need to save the type as it should
+  // be always "BIP32-Ed25519". Leaving this for now as futureproofing.
+  type: Opaque<'string'>, 
+
+  // The key should be either a PublicKeyHex or an AdaAddress
+  key: Either<PublicKeyHex, AdaAddress>,
+
+  // A DID id controller of the verification method
+  controller: Vector<5, Bytes<64>>,
+
+  // Other properties
+  OtherKeys: Maybe<[Vector<2, Opaque<'string'>>]>,
+}
+
+struct Service {
+  // We save the id as only the suffix of the "true" id:
+  // "true id": did:midnight:d36d6f76-e463-4e48-a97e-908edaee6453#some-service
+  // suffix: some-service ----------------------------------------^^^^^^^^^^^^
+  id: Opaque<'string'>,
+  type: Opaque<'string'>,  // Service type
+  serviceEndpoint: Opaque<'string'>,  // Endpoint URI
+  OtherKeys: Maybe<[Vector<2, Opaque<'string'>>]>,
+}
+
+struct Credential {
+  data: Opaque<'string'>,
+  publicKeyMultibase: Opaque<'string'>, 
+}
+
+// This is only to export for typescript usage. In the future this type could be used inside the contract.
+struct DIDDocument {
+  id: Bytes<64>,                    // DID identifier 
+  context: [Context],               // @context field
+
+  created: Maybe<Date>,             // timestamp when created
+  updated: Maybe<Date>,             // timestamp when last updated
+  deactivated: Maybe<Date>,         // whether DID is active/deactivated
+
+  authentication: [Either<Opaque<'string'>, VerificationMethod>],
+  //                      ^^^^^^^^^^^^^^^     
+  // This Opaque<'string'> is the suffix of the full DID.
+  verificationMethods: [VerificationMethod],  
+  services: [Service],
+  credentials: [Credential],
+
+}

@@ -1,0 +1,37 @@
+{
+  "name": "@midnames/cli",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "testnet-remote": "node --experimental-specifier-resolution=node --loader ts-node/esm src/testnet-remote.ts",
+    "testnet-remote-ps": "cp -r proof-server-testnet.yml ./dist/ && node --experimental-specifier-resolution=node --loader ts-node/esm src/testnet-remote-start-proof-server.ts",
+    "testnet-local": "node --experimental-specifier-resolution=node --loader ts-node/esm src/testnet-local.ts",
+    "standalone": "docker compose -f standalone.yml pull --policy missing && node --experimental-specifier-resolution=node --loader ts-node/esm src/standalone.ts",
+    "build": "rm -rf dist && tsc --project tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "format": "prettier --write 'src/**/*.{ts,js,json}'",
+    "format:check": "prettier --check 'src/**/*.{ts,js,json}'",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "start-testnet-remote": "bun run build && bun run testnet-remote",
+    "start-testnet-remote-ps": "bun run build && bun run testnet-remote-ps",
+    "start-testnet-local": "bun run build && bun run testnet-local",
+    "start-standalone": "bun run build && bun run standalone"
+  },
+  "dependencies": {
+    "@midnames/core": "*",
+    "@midnames/utils": "*",
+    "@midnight-ntwrk/midnight-js-network-id": "2.0.1",
+    "@midnight-ntwrk/midnight-js-utils": "2.0.1",
+    "rxjs": "^7.8.1",
+    "uuid": "^11.1.0"
+  },
+  "devDependencies": {
+    "@types/uuid": "^10.0.0"
+  }
+}

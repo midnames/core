@@ -1,0 +1,36 @@
+pragma language_version 0.16;
+
+import CompactStandardLibrary;
+
+include "types";
+include "ledger";
+include "witnesses";
+include "circuits";
+
+export { Maybe, Either } // sdtlib types/structs exports
+export { Context, Date, VerificationMethod, PublicKeyHex, AdaAddress, Service, Credential, DIDDocument }; // in-contract types/structs export
+
+
+constructor(ctx: Context) {
+    // uri string MUST be "https://www.w3.org/ns/did/v1"
+    default_context = disclose(ctx); 
+    default_pubkey = publicKey(default<Bytes<32>>);
+
+}
+
+// Relevant circuits that we want to keep here
+// check_access(..) and publicKey(..) WILL be modified. This is a prototype.
+// We could use an authenticationMethod from the did, but right now we
+// cannot derive anything on-chain that is not this. 
+
+circuit check_access(did_id: Bytes<64>) : [] {
+    const pk_caller = disclose(publicKey(local_secret_key()));
+    assert(did_authorized_controllers.lookup(did_id).member(pk_caller), "NOT ALLOWED");
+}
+
+export circuit publicKey(sk: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>(
+        [pad(32, "midnames:pk:"),
+        sk]
+    );
+}
