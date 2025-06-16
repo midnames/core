@@ -1,0 +1,29 @@
+{
+  "name": "@midnames/utils",
+  "version": "1.0.0",
+  "description": "Utilities for midnames project",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "bun run tsc",
+    "clean": "rm -rf dist",
+    "typecheck": "bun run tsc --noEmit",
+    "lint": "echo 'No lint config for utils package'",
+    "lint:fix": "echo 'No lint config for utils package'",
+    "format": "prettier --write 'src/**/*.{ts,js,json}'",
+    "format:check": "prettier --check 'src/**/*.{ts,js,json}'"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "peerDependencies": {
+    "typescript": "^5.0.0"
+  }
+}

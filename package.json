@@ -1,0 +1,54 @@
+{
+  "name": "midnames",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "midnames-cli",
+    "contract",
+    "utils"
+  ],
+  "scripts": {
+    "build": "bun run build:utils && bun run build:compact && bun run build:contract && bun run build:cli",
+    "build:utils": "bun run --cwd utils build",
+    "build:compact": "bun run --cwd contract compact",
+    "build:contract": "bun run --cwd contract build",
+    "build:cli": "bun run --cwd midnames-cli build",
+    "clean": "bun run --filter='*' clean && rm -rf node_modules/.cache",
+    "typecheck": "bun run build:utils && bun run --filter='*' typecheck",
+    "test": "bun run build:utils && bun run --filter='*' test",
+    "check": "bun run typecheck && bun run lint"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.0.0",
+    "@eslint/js": "^9.26.0",
+    "@types/node": "24.0.3",
+    "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^8.32.1",
+    "@typescript-eslint/parser": "^8.32.1",
+    "eslint": "^9.26.0",
+    "eslint-config-prettier": "^10.1.5",
+    "eslint-plugin-prettier": "^5.4.0",
+    "prettier": "^3.0.0",
+    "testcontainers": "11.0.3",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.8.3",
+    "vitest": "^3.1.4"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-runtime": "^0.8.1",
+    "@midnight-ntwrk/ledger": "^4.0.0",
+    "@midnight-ntwrk/midnight-js-contracts": "2.0.1",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "2.0.1",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "2.0.1",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "2.0.1",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "2.0.1",
+    "@midnight-ntwrk/midnight-js-types": "2.0.1",
+    "@midnight-ntwrk/wallet": "5.0.0",
+    "@midnight-ntwrk/wallet-api": "5.0.0",
+    "@midnight-ntwrk/zswap": "^4.0.0",
+    "pino": "^9.7.0",
+    "pino-pretty": "^13.0.0",
+    "ws": "^8.18.1"
+  }
+}

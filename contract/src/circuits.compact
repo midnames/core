@@ -1,0 +1,234 @@
+// Insert methods
+// - Lookup each did_id's field (a List<T>)
+// - Each value should be disclosed beforehand.
+
+circuit insert_context_in_doc(did_id: Bytes<64>, add: Context) : [] {
+    did_context.lookup(did_id).pushFront(add);
+}
+
+circuit insert_auth_method_in_doc(did_id: Bytes<64>, add: Either<Opaque<'string'>, VerificationMethod>) : [] {
+    did_authentication_methods.lookup(did_id).pushFront(add);
+}
+
+circuit insert_verif_method_in_doc(did_id: Bytes<64>, add: VerificationMethod) : [] {
+    did_verification_methods.lookup(did_id).pushFront(add);
+}
+
+circuit insert_service_in_doc(did_id: Bytes<64>, add: Service) : [] {
+    did_services.lookup(did_id).pushFront(add);
+}
+
+circuit insert_credential_in_doc(did_id: Bytes<64>, add: Credential) : [] {
+    did_credentials.lookup(did_id).pushFront(add);
+}
+
+circuit insert_controller_to_authorized_set_from_pk(did_id: Bytes<64>, pk: Bytes<32>) : [] {
+    did_authorized_controllers.lookup(did_id).insert(pk);
+}
+
+
+// Insert a pk derived from a sk if it's not the public key of the sk = [0; 32].
+circuit try_insert_controller_to_authorized_set_from_sk(did_id: Bytes<64>, sk: Bytes<32>) : [] {
+    const pk = disclose(publicKey(sk));
+    if (pk != default_pubkey) {
+        did_authorized_controllers.lookup(did_id).insert(pk);
+    }    
+}
+
+export circuit create_did(
+  did_id: Bytes<64>,
+  authentication_methods: Vector<5, Maybe<Either<Opaque<'string'>, VerificationMethod>>>,
+  verification_methods: Vector<5, Maybe<VerificationMethod>>,
+  services: Vector<5, Maybe<Service>>,
+  credentials: Vector<5, Maybe<Credential>>,
+  context: Vector<5, Maybe<Context>>,
+  authorized_public_addresses: Vector<5, Maybe<Bytes<32>>>
+): [] {
+    const disclosed_did_id = disclose(did_id);
+
+    // Ensure DID doesn't already exist
+    assert(!did_context.member(disclosed_did_id), "DID already exists") ;
+
+    // Validate required context
+    assert((context[0].value == default_context), "First context must be 'https://www.w3.org/ns/did/v1'");
+
+    // TODO: TIMESTAMPS
+    // const timestamp = get_current_time();
+    // Set creation timestamp
+    // did_created.insert(did_id, some<Date>(disclose(timestamp)));
+
+
+    // Initialize empty lists for the new DID
+    // and insert provided data
+    
+    did_context.insert(disclosed_did_id, default<List<Context>>);
+    const dcontext = disclose(context);
+    
+    for (const uc of dcontext) if (uc.is_some) insert_context_in_doc(disclosed_did_id, uc.value);
+
+
+    did_authentication_methods.insert(disclosed_did_id, default<List<Either<Opaque<'string'>, VerificationMethod>>>);
+    const dauthentication_methods = disclose(authentication_methods);
+    
+    for (const uc of dauthentication_methods) if (uc.is_some) insert_auth_method_in_doc(disclosed_did_id, uc.value);
+
+
+    did_verification_methods.insert(disclosed_did_id, default<List<VerificationMethod>>);
+    const dverification_methods = disclose(verification_methods);
+    
+    for (const uc of dverification_methods) if (uc.is_some) insert_verif_method_in_doc(disclosed_did_id, uc.value);
+
+
+    did_services.insert(disclosed_did_id, default<List<Service>>);
+    const dservices = disclose(services);
+    
+    for (const uc of dservices) if (uc.is_some) insert_service_in_doc(disclosed_did_id, uc.value);
+
+
+    did_credentials.insert(disclosed_did_id, default<List<Credential>>);
+    const dcredentials = disclose(credentials);
+    
+    for (const uc of dcredentials) if (uc.is_some) insert_credential_in_doc(disclosed_did_id, uc.value);
+
+
+    did_authorized_controllers.insert(disclosed_did_id, default<Set<Bytes<32>>>);
+    const dauthorized_public_addresses = disclose(authorized_public_addresses);
+    
+    for (const uc of dauthorized_public_addresses) if (uc.is_some) insert_controller_to_authorized_set_from_pk(disclosed_did_id, uc.value);
+        
+    // Add controllers using secret keys: 
+    const sks = multiple_local_secret_keys();
+    
+    for (const c of sks) try_insert_controller_to_authorized_set_from_sk(disclosed_did_id, c);
+
+    try_insert_controller_to_authorized_set_from_sk(disclosed_did_id, local_secret_key());
+}
+
+
+// The update_did_* methods should write a new one on chain. For now, it'll update the old one as we cant reliable
+// use Date onchain. 
+
+export circuit update_did_context(
+    did_id: Bytes<64>,
+    new_contexts: Vector<5, Maybe<Context>>,
+    overwrite: Boolean
+): [] {
+    check_access(did_id);
+    const disclosed_did_id = disclose(did_id);
+
+    if (disclose(overwrite)) {
+        assert((new_contexts[0].value == default_context), "First context must be 'https://www.w3.org/ns/did/v1'");    
+        did_context.insert(disclosed_did_id, default<List<Context>>);
+    }
+
+    const dnew_contexts = disclose(new_contexts);
+    for (const c of dnew_contexts) if (c.is_some) insert_context_in_doc(disclosed_did_id, c.value);
+
+}
+
+
+export circuit update_did_authentication_methods(
+  did_id: Bytes<64>,
+  new_authentication_methods: Vector<5, Maybe<Either<Opaque<'string'>, VerificationMethod>>>,
+  overwrite: Boolean
+): [] {
+    
+    check_access(did_id);
+    const disclosed_did_id = disclose(did_id);
+
+    if (disclose(overwrite)) did_authentication_methods.insert(disclosed_did_id, default<List<Either<Opaque<'string'>, VerificationMethod>>>);
+
+    const dnew_auth_methods = disclose(new_authentication_methods);
+    for (const c of dnew_auth_methods) if (c.is_some) insert_auth_method_in_doc(disclosed_did_id, c.value);
+}
+
+export circuit update_did_verification_methods(
+    did_id: Bytes<64>,
+    new_verification_methods: Vector<5, Maybe<VerificationMethod>>,
+    overwrite: Boolean
+): [] {
+
+    check_access(did_id);
+    const disclosed_did_id = disclose(did_id);
+
+    if (disclose(overwrite)) did_verification_methods.insert(disclosed_did_id, default<List<VerificationMethod>>);
+
+    const dnew_verification_methods = disclose(new_verification_methods);
+    for (const c of dnew_verification_methods) if (c.is_some) insert_verif_method_in_doc(disclosed_did_id, c.value);
+}
+
+export circuit update_did_authorized_controllers_from_pk(
+    did_id: Bytes<64>,
+    new_authorized_controllers: Vector<5, Maybe<Bytes<32>>>,
+    overwrite: Boolean
+): [] {
+
+    check_access(did_id);
+    const disclosed_did_id = disclose(did_id);
+
+    if (disclose(overwrite)) did_authorized_controllers.insert(disclosed_did_id, default<Set<Bytes<32>>>);
+
+    const dnew_auth_controller = disclose(new_authorized_controllers);
+    for (const c of dnew_auth_controller) if (c.is_some) insert_controller_to_authorized_set_from_pk(disclosed_did_id, c.value);
+}
+
+export circuit update_did_authorized_controllers_from_sk(
+    did_id: Bytes<64>,
+    new_authorized_controllers: Vector<5, Maybe<Bytes<32>>>,
+    overwrite: Boolean
+): [] {
+
+    check_access(did_id);
+    const disclosed_did_id = disclose(did_id);
+
+    if (disclose(overwrite)) did_authorized_controllers.insert(disclosed_did_id, default<Set<Bytes<32>>>);
+    
+    try_insert_controller_to_authorized_set_from_sk(disclosed_did_id, local_secret_key());
+}
+
+export circuit update_did_authorized_controllers_from_multiple_sk(
+    did_id: Bytes<64>,
+    new_authorized_controllers: Vector<5, Maybe<Bytes<32>>>,
+    overwrite: Boolean
+): [] {
+
+    check_access(did_id);
+    const disclosed_did_id = disclose(did_id);
+
+    if (disclose(overwrite)) did_authorized_controllers.insert(disclosed_did_id, default<Set<Bytes<32>>>);
+    
+    const sks = multiple_local_secret_keys();
+    for (const c of sks) try_insert_controller_to_authorized_set_from_sk(disclosed_did_id, c);
+    
+}
+
+
+export circuit update_did_services(
+  did_id: Bytes<64>,
+  new_services: Vector<5, Maybe<Service>>,
+  overwrite: Boolean
+): [] {
+    
+    check_access(did_id);
+    const disclosed_did_id = disclose(did_id);
+
+    if (disclose(overwrite)) did_services.insert(disclosed_did_id, default<List<Service>>);
+
+    const dnew_services = disclose(new_services);
+    for (const c of dnew_services) if (c.is_some) insert_service_in_doc(disclosed_did_id, c.value);
+}
+
+export circuit update_did_credentials(
+  did_id: Bytes<64>,
+  new_credentials: Vector<5, Maybe<Credential>>,
+  overwrite: Boolean
+): [] {
+
+    check_access(did_id);
+    const disclosed_did_id = disclose(did_id);
+
+    if (disclose(overwrite)) did_credentials.insert(disclosed_did_id, default<List<Credential>>);
+
+    const dnew_credentials = disclose(new_credentials);
+    for (const c of dnew_credentials) if (c.is_some) insert_credential_in_doc(disclosed_did_id, c.value);
+}
