@@ -1,8 +1,8 @@
 import { createHash, hkdf, randomBytes } from "node:crypto";
-import { ethers } from "ethers";
+import { p256 } from "@noble/curves/p256";
 
 const ISSUER_SALT = Buffer.from("midnames-vc-issuer-v1", "utf-8");
-const KEY_INFO = Buffer.from("secp256k1-signing-key", "utf-8");
+const KEY_INFO = Buffer.from("p256-signing-key", "utf-8");
 
 export class CryptoPrimitives {
   static hexToUint8Array(hex: string): Uint8Array {
@@ -56,9 +56,6 @@ export class CryptoPrimitives {
     return result;
   }
 
-  /**
-   * Compute holder commitment: SHA-256(owner_secret || pub_key_x || pub_key_y)
-   */
   static ComputeCommitment(
     ownerSecret: string,
     issuerPubKeyX: number[],
@@ -92,20 +89,22 @@ export function buildUncompressedPubKey(jwk: { x: bigint | string; y: bigint | s
   return "0x04" + xHex + yHex;
 }
 
-export function decodeSignature(base64Proof: string): { r: string; s: string; v: number } {
+/** Decode a base64-encoded 64-byte raw P-256 signature [r(32)||s(32)]. */
+export function decodeSignature(base64Proof: string): Uint8Array {
   const raw = Uint8Array.from(atob(base64Proof), (c) => c.charCodeAt(0));
-  if (raw.length !== 65) throw new Error(`Invalid signature length: ${raw.length}`);
-  return {
-    r: "0x" + Buffer.from(raw.slice(0, 32)).toString("hex"),
-    s: "0x" + Buffer.from(raw.slice(32, 64)).toString("hex"),
-    v: raw[64] + 27,
-  };
+  if (raw.length !== 64) throw new Error(`Invalid P-256 signature length: ${raw.length} (expected 64)`);
+  return raw;
 }
 
-export async function createIssuerKeys(
-  seed?: string,
-): Promise<{ privKey: Uint8Array; signingKey: ethers.SigningKey }> {
-  let privateKeyBytes: Uint8Array;
+/**
+ * Derive a deterministic P-256 key pair from a seed string via HKDF-SHA256.
+ * Without a seed, generates a random key pair.
+ */
+export async function createIssuerKeyPair(seed?: string): Promise<{
+  privKey: Uint8Array;
+  pubKeyRaw: string; // "0x04" + x(64hex) + y(64hex)
+}> {
+  let privKey: Uint8Array;
 
   if (seed) {
     const derivedKey = await new Promise<ArrayBuffer>((resolve, reject) => {
@@ -114,11 +113,32 @@ export async function createIssuerKeys(
         else resolve(key);
       });
     });
-    privateKeyBytes = new Uint8Array(derivedKey);
+    privKey = new Uint8Array(derivedKey);
   } else {
-    privateKeyBytes = new Uint8Array(randomBytes(32));
+    privKey = new Uint8Array(randomBytes(32));
   }
 
-  const privateKeyHex = "0x" + Buffer.from(privateKeyBytes).toString("hex");
-  return { privKey: privateKeyBytes, signingKey: new ethers.SigningKey(privateKeyHex) };
+  const pubPoint = p256.getPublicKey(privKey, false); // 65-byte uncompressed [0x04, x32, y32]
+  const pubKeyRaw = "0x" + Buffer.from(pubPoint).toString("hex");
+
+  return { privKey, pubKeyRaw };
+}
+
+/** Sign dataBytes with a P-256 private key. Returns 64-byte compact sig [r(32)||s(32)] with low-S. */
+export function signP256(privKey: Uint8Array, dataBytes: Uint8Array): Uint8Array {
+  const hash = createHash("sha256").update(dataBytes).digest();
+  const sig = p256.sign(hash, privKey, { lowS: true });
+  return sig.toCompactRawBytes();
+}
+
+/** Verify a 64-byte P-256 compact signature against an uncompressed public key hex. */
+export function verifyP256(pubKeyHex: string, sig: Uint8Array, dataBytes: Uint8Array): boolean {
+  try {
+    const hash = createHash("sha256").update(dataBytes).digest();
+    const cleanHex = pubKeyHex.startsWith("0x") ? pubKeyHex.slice(2) : pubKeyHex;
+    const pubKeyBytes = Buffer.from(cleanHex, "hex");
+    return p256.verify(sig, hash, pubKeyBytes, { lowS: true });
+  } catch {
+    return false;
+  }
 }

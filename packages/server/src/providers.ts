@@ -25,6 +25,7 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import * as Rx from "rxjs";
+import { mnemonicToSeedSync } from "bip39";
 import { WebSocket } from "ws";
 
 import type { Config, FullConfig } from "./config.js";
@@ -77,7 +78,14 @@ export async function hashProverKey(proverKey: Uint8Array): Promise<Uint8Array> 
 }
 
 export async function initPrivateState(providers: MidnightDIDProviders): Promise<MidnightDIDPrivateState> {
-  const providedPrivateState = await providers.privateStateProvider.get("midnightDIDPrivateState");
+  let providedPrivateState: MidnightDIDPrivateState | null = null;
+  try {
+    providedPrivateState = await providers.privateStateProvider.get("midnightDIDPrivateState");
+  } catch (error: unknown) {
+    if (!(error instanceof Error) || !error.message.includes("Contract address not set")) {
+      throw error;
+    }
+  }
 
   if (
     providedPrivateState != null &&
@@ -92,7 +100,13 @@ export async function initPrivateState(providers: MidnightDIDProviders): Promise
   const proverKey = await (providers as any).zkConfigProvider.getProverKey("addVerificationMethod");
   const secretKey = await hashProverKey(proverKey);
   const privateState: MidnightDIDPrivateState = { secretKey } as unknown as MidnightDIDPrivateState;
-  await providers.privateStateProvider.set(MidnightDIDPrivateStateId, privateState);
+  try {
+    await providers.privateStateProvider.set(MidnightDIDPrivateStateId, privateState);
+  } catch (error: unknown) {
+    if (!(error instanceof Error) || !error.message.includes("Contract address not set")) {
+      throw error;
+    }
+  }
   return privateState;
 }
 
@@ -106,6 +120,10 @@ function makeVerificationMethod(
     typ: VerificationMethodType.JsonWebKey,
     publicKeyJwk: { kty: KeyType.EC, crv, x: BigInt("0x" + publicKey.x), y: BigInt("0x" + publicKey.y) },
   };
+}
+
+export function buildHolderKeyVerificationMethod(publicKey: { x: string; y: string }): VerificationMethod {
+  return makeVerificationMethod("key-0", CurveType.P256, publicKey);
 }
 
 export function buildCdcvmKeyVerificationMethod(publicKey: { x: string; y: string }): VerificationMethod {
@@ -171,7 +189,7 @@ export const deploy = async (
   });
   logger.info(`Deployed contract at address: ${didContract.deployTxData.public.contractAddress}`);
 
-  const holderVm = makeVerificationMethod("key-0", CurveType.Ed25519, holderKey);
+  const holderVm = makeVerificationMethod("key-0", CurveType.P256, holderKey);
   await didContract.callTx.addVerificationMethod(holderVm);
   logger.info("Added holder key (key-0) to deployed contract");
 
@@ -261,6 +279,7 @@ function readWalletCache(): WalletCache | null {
 function writeWalletCache(cache: WalletCache): void {
   try {
     fs.writeFileSync(walletCachePath(), JSON.stringify(cache), "utf-8");
+    logger.info(`Wallet state cached to ${walletCachePath()}`);
   } catch (e) {
     logger.error(`Failed to write wallet cache: ${e}`);
   }
@@ -288,7 +307,7 @@ export const initWalletWithSeed = async (seed: Buffer, config: Config): Promise<
   const walletConfiguration = {
     networkId: config.networkId as NetworkId.NetworkId,
     costParameters: { additionalFeeOverhead: 1_000_000_000n, feeBlocksMargin: 5 },
-    relayURL: new URL(config.node),
+    relayURL: new URL(config.node.replace(/^http/, "ws")),
     provingServerUrl: new URL(config.proofServer),
     indexerClientConnection: { indexerHttpUrl: config.indexer, indexerWsUrl: config.indexerWS },
     indexerUrl: config.indexerWS,
@@ -335,12 +354,14 @@ export const initWalletWithSeed = async (seed: Buffer, config: Config): Promise<
     unshielded: () => unshieldedWallet,
     dust: () => dustWallet,
   });
+  await facade.start(shieldedSecretKeys as any, dustSecretKey as any);
 
   return { wallet: facade, shieldedWallet, unshieldedWallet, dustWallet, shieldedSecretKeys, dustSecretKey, unshieldedKeystore };
 };
 
-export const buildWalletAndWaitForFunds = async (config: Config, hexSeed: string): Promise<WalletContext> => {
-  const seed = Buffer.from(hexSeed, "hex");
+export const buildWalletAndWaitForFunds = async (config: Config, seedOrMnemonic: string): Promise<WalletContext> => {
+  const isHex = /^[0-9a-fA-F]+$/.test(seedOrMnemonic.trim());
+  const seed = isHex ? Buffer.from(seedOrMnemonic.trim(), "hex") : mnemonicToSeedSync(seedOrMnemonic.trim());
   const walletContext = await initWalletWithSeed(seed, config);
   logger.debug(`Wallet address: ${walletContext.unshieldedKeystore.getBech32Address().asString()}`);
   await waitForSync(walletContext.wallet);
@@ -370,7 +391,8 @@ export const configureProviders = async (
   return {
     privateStateProvider: levelPrivateStateProvider<typeof MidnightDIDPrivateStateId>({
       privateStateStoreName: config.privateStateStoreName,
-      privateStoragePasswordProvider: async () => config.privateStateStoreName,
+      privateStoragePasswordProvider: async () =>
+        process.env.MIDNAMES_PRIVATE_STATE_PASSWORD ?? `${config.privateStateStoreName}!A1`,
       accountId: "default",
     }),
     publicDataProvider: indexerPublicDataProvider(config.indexer, config.indexerWS),

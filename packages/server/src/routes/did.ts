@@ -1,9 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { ethers } from "ethers";
 import { logger } from "../logger.js";
 import * as MidnamesHttp from "../utils/http.js";
 import * as MidnamesDid from "../deploy.js";
-import { parseUncompressedKey, decodeSignature, buildUncompressedPubKey } from "../crypto.js";
+import { parseUncompressedKey, buildUncompressedPubKey, verifyP256 } from "../crypto.js";
 import * as MidnamesStore from "../stores/index.js";
 import * as DID from "../managed/did/contract/index.js";
 import {
@@ -118,17 +117,11 @@ function handleRebindKey(ctx: DidRouteContext) {
       challengeEntry.used = true;
 
       const signedMessage = challenge + credentialId;
-      const msgHash = ethers.sha256(new TextEncoder().encode(signedMessage));
-      let proofR: string, proofS: string, proofV: number;
-      try {
-        ({ r: proofR, s: proofS, v: proofV } = decodeSignature(proof));
-      } catch (e) {
-        MidnamesHttp.json(res, 400, { error: e instanceof Error ? e.message : "Invalid proof signature" });
+      const proofSig = Buffer.from(proof, "base64");
+      if (proofSig.length !== 64) {
+        MidnamesHttp.json(res, 400, { error: `Invalid proof signature length: ${proofSig.length}` });
         return;
       }
-
-      const proofSignature = ethers.Signature.from({ r: proofR, s: proofS, v: proofV });
-      const recoveredPubKey = ethers.SigningKey.recoverPublicKey(msgHash, proofSignature);
 
       const holderContractAddress = holderDid.split(":")[3];
       if (!holderContractAddress) {
@@ -150,7 +143,8 @@ function handleRebindKey(ctx: DidRouteContext) {
       }
 
       const expectedPubKey = buildUncompressedPubKey(holderKeyJwk);
-      if (recoveredPubKey.toLowerCase() !== expectedPubKey.toLowerCase()) {
+      const msgBytes = new TextEncoder().encode(signedMessage);
+      if (!verifyP256(expectedPubKey, proofSig, msgBytes)) {
         MidnamesHttp.json(res, 403, { error: "Proof signature does not match holder DID key-0" });
         return;
       }

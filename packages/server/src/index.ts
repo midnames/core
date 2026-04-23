@@ -56,6 +56,7 @@ export { loadConfig } from "./config.js";
 export type { Config, FullConfig } from "./config.js";
 export { verifyCredentialSignature, isRevoked } from "./routes/verification.js";
 export { issueCredential } from "./handlers/issueCredential.js";
+export { deployDid } from "./deploy.js";
 
 // ============================================================================
 // Rate limits (requests per minute per IP)
@@ -87,9 +88,7 @@ export async function startMidnamesServer<TSubject>(
 
   const config = loadConfig();
   const seed = config.walletSeed;
-  if (!/^[0-9a-fA-F]{64,128}$/.test(seed)) {
-    throw new Error("MIDNIGHT_WALLET_SEED must be a 64-128 character hex string");
-  }
+  if (!seed) throw new Error("MIDNIGHT_WALLET_SEED is required");
 
   logger.info("Building wallet and waiting for funds...");
   const walletContext: WalletContext = await buildWalletAndWaitForFunds(config, seed);

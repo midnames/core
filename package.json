@@ -10,7 +10,7 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "bun run build:utils && bun run build:compact && bun run build:contract && bun run build:cli",
+    "build":"bun run build:utils && bun run build:compact && bun run build:contract && bun run build:cli",
     "build:utils": "bun run --cwd utils build",
     "build:compact": "bun run --cwd contract compact",
     "build:contract": "bun run --cwd contract build",

@@ -1,3 +1,4 @@
+import { createIssuerKeyPair, parseUncompressedKey } from "@midnames/sdk";
 import { logger } from "./logger.js";
 import {
   buildWalletAndWaitForFunds,
@@ -13,9 +14,10 @@ import { loadConfig } from "./config.js";
 export async function deployDid(): Promise<string> {
   const config = loadConfig();
   const seed = config.walletSeed;
-  if (!/^[0-9a-fA-F]{64,128}$/.test(seed)) {
-    throw new Error("MIDNIGHT_WALLET_SEED must be a 64-128 character hex string");
-  }
+  if (!seed) throw new Error("MIDNIGHT_WALLET_SEED is required");
+
+  const { pubKeyRaw } = await createIssuerKeyPair(seed);
+  const issuerKeyXY = parseUncompressedKey(pubKeyRaw);
 
   let walletContext: WalletContext | undefined;
   try {
@@ -23,12 +25,7 @@ export async function deployDid(): Promise<string> {
     const providers = await configureProviders(walletContext, config);
     const privateState = await initPrivateState(providers);
     const compiledContract = createContractInstance(config.zkConfigPath);
-    const didContract = await deploy(
-      providers,
-      compiledContract,
-      privateState,
-      { x: "0".repeat(64), y: "0".repeat(64) },
-    );
+    const didContract = await deploy(providers, compiledContract, privateState, issuerKeyXY);
     const contractAddress = didContract.deployTxData.public.contractAddress;
     const did = `did:midnight:${config.networkId}:${contractAddress}`;
     logger.info(`DID deployed: ${did}`);

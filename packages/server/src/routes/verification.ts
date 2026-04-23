@@ -1,8 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { ethers } from "ethers";
 import { canonicalize } from "json-canonicalize";
 import { logger } from "../logger.js";
-import { decodeSignature, buildUncompressedPubKey } from "../crypto.js";
+import { buildUncompressedPubKey, verifyP256 } from "../crypto.js";
 import * as MidnamesServerConstants from "../constants.js";
 import * as MidnamesHttp from "../utils/http.js";
 import * as MidnamesStore from "../stores/index.js";
@@ -121,25 +120,11 @@ function handleVerifyPresentation(ctx: VerificationRouteContext) {
         return;
       }
 
-      let vpR: string, vpS: string, vpV: number;
-      try {
-        ({ r: vpR, s: vpS, v: vpV } = decodeSignature(vp.proof.proofValue));
-      } catch (e) {
-        MidnamesHttp.json(res, 200, { verified: false, status: "invalid", error: e instanceof Error ? e.message : "Invalid VP signature" });
+      const vpSig = Buffer.from(vp.proof.proofValue, "base64");
+      if (vpSig.length !== 64) {
+        MidnamesHttp.json(res, 200, { verified: false, status: "invalid", error: `Invalid VP signature length: ${vpSig.length}` });
         return;
       }
-
-      const signedMessage = vp.proof.challenge + (vc.id || "");
-      const msgHash = ethers.sha256(new TextEncoder().encode(signedMessage));
-
-      const SECP256K1_N = BigInt("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141");
-      if (BigInt(vpS) > SECP256K1_N / 2n) {
-        MidnamesHttp.json(res, 200, { verified: false, status: "invalid", error: "VP signature uses high-S value (malleable)" });
-        return;
-      }
-
-      const vpSignature = ethers.Signature.from({ r: vpR, s: vpS, v: vpV });
-      const recoveredHolderPubKey = ethers.SigningKey.recoverPublicKey(msgHash, vpSignature);
 
       const holderContractAddress = holderDid.split(":")[3];
       if (!holderContractAddress) {
@@ -165,8 +150,10 @@ function handleVerifyPresentation(ctx: VerificationRouteContext) {
         return;
       }
 
-      const expectedHolderPubKey = buildUncompressedPubKey(holderKeyJwk);
-      if (recoveredHolderPubKey.toLowerCase() !== expectedHolderPubKey.toLowerCase()) {
+      const holderPubKey = buildUncompressedPubKey(holderKeyJwk);
+      const msgBytes = new TextEncoder().encode(vp.proof.challenge + (vc.id || ""));
+      const vpValid = verifyP256(holderPubKey, vpSig, msgBytes);
+      if (!vpValid) {
         MidnamesHttp.json(res, 200, { verified: false, status: "invalid", error: "Holder signature does not match DID public key" });
         return;
       }
@@ -180,7 +167,7 @@ function handleVerifyPresentation(ctx: VerificationRouteContext) {
           if (cdcvmKeyJwk) {
             const { createVerify, createPublicKey } = await import("node:crypto");
             const sigBuf = Buffer.from(cdcvmProofValue, "base64");
-            const msgBuf = Buffer.from(signedMessage, "utf-8");
+            const msgBuf = Buffer.from(vp.proof.challenge + (vc.id || ""), "utf-8");
             const pointHex = buildUncompressedPubKey(cdcvmKeyJwk).slice(2);
             const pointBuf = Buffer.from(pointHex, "hex");
             const spkiHeader = Buffer.from("3059301306072a8648ce3d020106082a8648ce3d030107034200", "hex");
@@ -235,15 +222,11 @@ export async function verifyCredentialSignature(
     }
     if (!vc.proof?.proofValue) return { valid: false, error: "Credential is missing proof or proofValue" };
 
+    const sig = Buffer.from(vc.proof.proofValue, "base64");
+    if (sig.length !== 64) return { valid: false, error: `Invalid signature length: ${sig.length} (expected 64)` };
+
     const { proof: _proof, ...vcWithoutProof } = vc;
-    const jsonStr = canonicalize(vcWithoutProof);
-    const jsonBytes = new TextEncoder().encode(jsonStr);
-    const e = ethers.sha256(jsonBytes);
-
-    const { r, s, v } = decodeSignature(vc.proof.proofValue);
-
-    const SECP256K1_N = BigInt("0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141");
-    if (BigInt(s) > SECP256K1_N / 2n) return { valid: false, error: "Signature uses high-S value (malleable)" };
+    const jsonBytes = new TextEncoder().encode(canonicalize(vcWithoutProof));
 
     const splitted = vc.proof.verificationMethod!.split("#");
     const signatureKey = splitted[1];
@@ -259,8 +242,7 @@ export async function verifyCredentialSignature(
     if (!publicKeyJwk) return { valid: false, error: `Public key ${signatureKey} not found in issuer DID document` };
 
     const expectedPubKey = buildUncompressedPubKey(publicKeyJwk);
-    const recoveredPubKey = ethers.SigningKey.recoverPublicKey(e, ethers.Signature.from({ r, s, v }));
-    const valid = recoveredPubKey.toLowerCase() === expectedPubKey.toLowerCase();
+    const valid = verifyP256(expectedPubKey, sig, jsonBytes);
     if (!valid) return { valid: false, error: "Signature verification failed" };
     return { valid: true };
   } catch (err) {

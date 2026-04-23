@@ -1,6 +1,5 @@
 import { canonicalize } from "json-canonicalize";
-import { ethers } from "ethers";
-import { createIssuerKeys } from "@midnames/sdk";
+import { createIssuerKeyPair, signP256 } from "@midnames/sdk";
 import type { VerifiableCredential, Issuer } from "@midnames/sdk";
 import * as MidnamesServerConstants from "../constants.js";
 
@@ -27,7 +26,7 @@ export async function issueCredential<TSubject extends Record<string, unknown>>(
 ): Promise<VerifiableCredential<TSubject>> {
   const { seed, issuerName, issuerLogoUrl, issuanceDate, expirationDate } = options;
 
-  const { signingKey } = await createIssuerKeys(seed);
+  const { privKey } = await createIssuerKeyPair(seed);
 
   const issuanceDateStr = issuanceDate ?? new Date().toISOString();
   const defaultExpiration = new Date();
@@ -64,22 +63,15 @@ export async function issueCredential<TSubject extends Record<string, unknown>>(
     );
   }
 
-  const credentialHash = ethers.sha256(jsonBytes);
-  const signature = signingKey.sign(credentialHash);
-
-  const rBytes = ethers.getBytes(signature.r);
-  const sBytes = ethers.getBytes(signature.s);
-  const sigBytes = new Uint8Array(65);
-  sigBytes.set(rBytes, 0);
-  sigBytes.set(sBytes, 32);
-  sigBytes[64] = signature.v - 27;
+  const sig = signP256(privKey, jsonBytes); // 64-byte [r||s] compact, low-S
 
   vc.proof = {
-    type: "EcdsaSecp256k1RecoverySignature2020",
+    type: "DataIntegrityProof",
+    cryptosuite: "ecdsa-2019",
     created: new Date().toISOString(),
     proofPurpose: "assertionMethod",
-    verificationMethod: `${issuerDid}#key-1`,
-    proofValue: Buffer.from(sigBytes).toString("base64"),
+    verificationMethod: `${issuerDid}#key-0`,
+    proofValue: Buffer.from(sig).toString("base64"),
   };
 
   return vc;

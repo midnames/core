@@ -7,6 +7,7 @@
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "bun": "./src/index.ts",
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
@@ -45,6 +46,7 @@
     "ethers": "^6.16.0",
     "jose": "^6.2.1",
     "json-canonicalize": "^2.0.0",
+    "bip39": "^3.1.0",
     "rxjs": "^7.8.1",
     "ws": "^8.18.2",
     "zod": "^3.25.76"

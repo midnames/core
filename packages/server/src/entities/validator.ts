@@ -71,6 +71,7 @@ export const VerifyPresentationSchema = z.object({
         proof: z
           .object({
             type: z.string().min(1),
+            cryptosuite: z.string().min(1).optional(),
             created: ISODateString.optional(),
             verificationMethod: z.string().min(1).optional(),
             proofPurpose: z.string().min(1).optional(),
@@ -108,6 +109,7 @@ export const VerifiableCredentialSchema = z
     proof: z
       .object({
         type: z.string().min(1),
+        cryptosuite: z.string().min(1).optional(),
         created: ISODateString.optional(),
         verificationMethod: z.string().min(1).optional(),
         proofPurpose: z.string().min(1).optional(),
