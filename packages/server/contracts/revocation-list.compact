@@ -1,0 +1,44 @@
+import CompactStandardLibrary;
+
+witness findAuthPath(pk: ZswapCoinPublicKey): MerkleTreePath<10, ZswapCoinPublicKey>;
+
+export ledger revocationAuthority: HistoricMerkleTree<10, ZswapCoinPublicKey>;
+export ledger revocationNullifiers: Set<Bytes<32>>;
+export ledger revocationList: Set<Bytes<32>>;
+export ledger revocations: Counter;
+
+constructor() {
+    revocationAuthority.insert(ownPublicKey());
+}
+
+export circuit addRevocationAuthority(pk: ZswapCoinPublicKey): [] {
+    accessControl();
+
+    revocationAuthority.insert(disclose(pk));
+}
+
+export circuit revokeCredential(credentialIdHash: Bytes<32>): [] {
+    accessControl();
+
+    const disclosedId = disclose(credentialIdHash);
+    const nul = revocationNullifier(disclosedId);
+
+    assert(!revocationNullifiers.member(nul), "authority already revoked this credential");
+
+    revocationNullifiers.insert(nul);
+    revocationList.insert(disclosedId);
+    revocations.increment(1);
+}
+
+circuit revocationNullifier(credentialIdHash: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<3, Bytes<32>>>([pad(32, "revocation-nullifier"), ownPublicKey().bytes, credentialIdHash]);
+}
+
+circuit accessControl(): [] {
+    const authPath = findAuthPath(ownPublicKey());
+
+    assert(
+        revocationAuthority.checkRoot(merkleTreePathRoot<10, ZswapCoinPublicKey>(disclose(authPath))),
+        "caller is not an authorized revocation authority"
+    );
+}

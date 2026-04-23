@@ -6,7 +6,8 @@
   "workspaces": [
     "midnames-cli",
     "contract",
-    "utils"
+    "utils",
+    "packages/*"
   ],
   "scripts": {
     "build": "bun run build:utils && bun run build:compact && bun run build:contract && bun run build:cli",
