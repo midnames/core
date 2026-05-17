@@ -10,6 +10,7 @@ import {
   closeWallet,
   configureProviders,
   deployRevocationListContract,
+  findRevocationListContract,
   initPrivateState,
   waitForSync,
   type WalletContext,
@@ -101,9 +102,21 @@ export async function startMidnamesServer<TSubject>(
 
   const thisDir = path.dirname(fileURLToPath(import.meta.url));
   const revocationZkConfigPath = path.resolve(thisDir, "managed", "revocation-list");
-  const revocationResult = await deployRevocationListContract(providers, revocationZkConfigPath, config.proofServer);
+  const revocationResult = config.revocationContractAddress
+    ? await findRevocationListContract(
+        providers,
+        revocationZkConfigPath,
+        config.proofServer,
+        config.revocationContractAddress,
+      )
+    : await deployRevocationListContract(providers, revocationZkConfigPath, config.proofServer);
   const revocationContract = revocationResult.contract;
   const revocationAddress = revocationResult.address;
+  if (!config.revocationContractAddress) {
+    logger.info(
+      `Set MIDNIGHT_REVOCATION_CONTRACT_ADDRESS=${revocationAddress} on the next start to reuse this contract.`,
+    );
+  }
 
   logger.info("Wallet synced and ready.");
 
@@ -130,7 +143,7 @@ export async function startMidnamesServer<TSubject>(
     zkConfigPath: config.zkConfigPath,
   };
 
-  const verificationCtx: VerificationRouteContext = { providers };
+  const verificationCtx: VerificationRouteContext = { providers, revocationAddress };
 
   const revocationCtx: RevocationRouteContext = {
     providers,

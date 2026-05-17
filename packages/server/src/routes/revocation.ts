@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { webcrypto } from "node:crypto";
 import { logger } from "../logger.js";
 import { RevokeCredentialSchema } from "../entities/validator.js";
 import * as MidnamesHttp from "../utils/http.js";
+import { hashCredentialId } from "../utils/credentialId.js";
 import { ledger } from "../managed/revocation-list/contract/index.js";
 import type { RevocationRouteContext } from "./types.js";
 
@@ -11,12 +11,6 @@ export function createRevocationRoutes(ctx: RevocationRouteContext) {
     "/revoke": { handler: handleRevoke(ctx), auth: true },
     "/revocation-status": { handler: handleRevocationStatus(ctx), auth: false },
   };
-}
-
-async function hashCredentialId(credentialId: string): Promise<Uint8Array> {
-  const data = new TextEncoder().encode(credentialId);
-  const hashBuffer = await webcrypto.subtle.digest("SHA-256", data);
-  return new Uint8Array(hashBuffer);
 }
 
 function handleRevoke(ctx: RevocationRouteContext) {

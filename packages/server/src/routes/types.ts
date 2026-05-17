@@ -23,6 +23,7 @@ export interface DidRouteContext {
 
 export interface VerificationRouteContext {
   providers: MidnightDIDProviders;
+  revocationAddress: string;
 }
 
 export interface RevocationRouteContext {

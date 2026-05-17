@@ -6,6 +6,8 @@ import * as MidnamesServerConstants from "../constants.js";
 import * as MidnamesHttp from "../utils/http.js";
 import * as MidnamesStore from "../stores/index.js";
 import * as DID from "../managed/did/contract/index.js";
+import { ledger as revocationLedger } from "../managed/revocation-list/contract/index.js";
+import { hashCredentialId } from "../utils/credentialId.js";
 import { BatchVerifySchema, VerifyPresentationSchema, validateCredentialStructure } from "../entities/validator.js";
 import type { MidnightDIDProviders, SignatureVerificationResult } from "../types.js";
 import type { VerificationRouteContext } from "./types.js";
@@ -31,7 +33,7 @@ function handleVerify(ctx: VerificationRouteContext) {
         MidnamesHttp.json(res, 400, { error: "Invalid credential: missing proof" });
         return;
       }
-      if (isRevoked(vc)) {
+      if (await isRevoked(ctx.providers, ctx.revocationAddress, vc.id)) {
         MidnamesHttp.json(res, 200, { verified: false, status: "revoked", error: "Credential has been revoked" });
         return;
       }
@@ -54,7 +56,9 @@ function handleVerifyBatch(ctx: VerificationRouteContext) {
       const results = await Promise.all(
         parsed.credentials.map(async (vc) => {
           const base = { id: vc.id, type: vc.type, credentialSubject: vc.credentialSubject };
-          if (isRevoked(vc as any)) return { ...base, status: "revoked" as const, error: "Credential has been revoked" };
+          if (await isRevoked(ctx.providers, ctx.revocationAddress, vc.id)) {
+            return { ...base, status: "revoked" as const, error: "Credential has been revoked" };
+          }
           const result = await verifyCredentialSignature(ctx.providers, vc as any);
           if (result.valid) return { ...base, status: "verified" as const };
           return { ...base, status: "invalid" as const, error: result.error };
@@ -99,7 +103,7 @@ function handleVerifyPresentation(ctx: VerificationRouteContext) {
       const vc = vp.verifiableCredential[0];
       if (!vc) { MidnamesHttp.json(res, 400, { error: "No credential in presentation" }); return; }
 
-      if (isRevoked(vc as any)) {
+      if (await isRevoked(ctx.providers, ctx.revocationAddress, vc.id)) {
         MidnamesHttp.json(res, 200, { verified: false, status: "revoked", error: "Credential has been revoked" });
         return;
       }
@@ -196,14 +200,25 @@ function handleVerifyPresentation(ctx: VerificationRouteContext) {
 // ============================================================================
 
 /**
- * Check if a credential has been revoked.
- * TODO: replace stub with on-chain revocation list query via /revocation-status.
- * The revocation contract and endpoints are fully implemented — this function
- * needs to be wired to query ctx.providers.publicDataProvider against the
- * revocation contract address.
+ * Check if a credential has been revoked by querying the on-chain revocation list.
+ *
+ * A credential without an id cannot appear in the revocation list — returns false.
+ * Throws if the contract state cannot be queried (caller's try/catch should turn
+ * that into a 4xx response rather than a false "verified").
  */
-export function isRevoked(_credential: unknown): boolean {
-  return false;
+export async function isRevoked(
+  providers: MidnightDIDProviders,
+  revocationAddress: string,
+  credentialId: string | undefined,
+): Promise<boolean> {
+  if (!credentialId) return false;
+
+  const state = await providers.publicDataProvider.queryContractState(revocationAddress);
+  if (!state || !state.data) throw new Error("Failed to query revocation contract state");
+
+  const led = revocationLedger(state.data);
+  const hash = await hashCredentialId(credentialId);
+  return led.revocationList.member(hash);
 }
 
 export async function verifyCredentialSignature(

@@ -13,6 +13,7 @@ export interface FullConfig extends Config {
   readonly walletSeed: string;
   readonly zkConfigPath: string;
   readonly privateStateStoreName: string;
+  readonly revocationContractAddress?: string;
 }
 
 export function loadConfig(): FullConfig {
@@ -36,5 +37,6 @@ export function loadConfig(): FullConfig {
     proofServer:
       process.env.MIDNIGHT_PROOF_SERVER_URL ?? "http://localhost:6300",
     networkId: process.env.MIDNIGHT_NETWORK_ID ?? "preprod",
+    revocationContractAddress: process.env.MIDNIGHT_REVOCATION_CONTRACT_ADDRESS,
   };
 }

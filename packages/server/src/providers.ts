@@ -1,7 +1,7 @@
 import { CompiledContract } from "@midnight-ntwrk/compact-js";
 import { nativeToken } from "@midnight-ntwrk/ledger-v8";
 import * as ledger from "@midnight-ntwrk/ledger-v8";
-import { deployContract } from "@midnight-ntwrk/midnight-js-contracts";
+import { deployContract, findDeployedContract } from "@midnight-ntwrk/midnight-js-contracts";
 import { httpClientProofProvider } from "@midnight-ntwrk/midnight-js-http-client-proof-provider";
 import { indexerPublicDataProvider } from "@midnight-ntwrk/midnight-js-indexer-public-data-provider";
 import { levelPrivateStateProvider } from "@midnight-ntwrk/midnight-js-level-private-state-provider";
@@ -171,6 +171,40 @@ export async function deployRevocationListContract(
   const address = deployedContract.deployTxData.public.contractAddress;
   logger.info(`Revocation List contract deployed at: ${address}`);
   return { contract: deployedContract, address };
+}
+
+export async function findRevocationListContract(
+  providers: MidnightDIDProviders,
+  zkConfigPath: string,
+  proofServerUrl: string,
+  contractAddress: string,
+): Promise<{ contract: any; address: string }> {
+  logger.info(`Looking up existing Revocation List contract at ${contractAddress}...`);
+
+  const privateState: MidnightRevocationPrivateState = {};
+  const compiledContract = createRevocationListContractInstance(zkConfigPath);
+
+  const revocationZkConfigProvider = new NodeZkConfigProvider<
+    "addRevocationAuthority" | "revokeCredential"
+  >(zkConfigPath);
+
+  const revocationProofProvider = httpClientProofProvider(proofServerUrl, revocationZkConfigProvider);
+
+  const revocationProviders = {
+    ...providers,
+    zkConfigProvider: revocationZkConfigProvider,
+    proofProvider: revocationProofProvider,
+  };
+
+  const found = await (findDeployedContract as any)(revocationProviders, {
+    compiledContract,
+    contractAddress,
+    privateStateId: RevocationListPrivateStateId,
+    initialPrivateState: privateState,
+  });
+
+  logger.info(`Revocation List contract attached at: ${contractAddress}`);
+  return { contract: found, address: contractAddress };
 }
 
 export const deploy = async (
