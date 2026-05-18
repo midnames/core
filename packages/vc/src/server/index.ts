@@ -27,7 +27,7 @@ import { createVerificationRoutes } from "./routes/verification.js";
 import { createDidRoutes } from "./routes/did.js";
 import { createRevocationRoutes } from "./routes/revocation.js";
 import type { CredentialRouteContext, DidRouteContext, RevocationRouteContext, VerificationRouteContext } from "./routes/types.js";
-import type { VerifiableCredential } from "@midnames/sdk";
+import type { VerifiableCredential } from "@midnames/vc/core";
 
 // ============================================================================
 // Public API types
@@ -165,12 +165,14 @@ export async function startMidnamesServer<TSubject>(
   const handleClaim = getHandleClaim<TSubject>(credentialCtx, _sessionStore);
 
   type RouteHandler = (req: IncomingMessage, res: ServerResponse) => Promise<void>;
-  const routes: Record<string, { handler: RouteHandler; auth: boolean }> = {
+  // /challenge is GET-only; everything else in the route map is POST.
+  const { "/challenge": challengeRoute, ...postRoutes } = {
     ...credentialRoutesOnly,
     ...didRoutes,
     ...verificationRoutes,
     ...revocationRoutes,
-  };
+  } as Record<string, { handler: RouteHandler; auth: boolean }>;
+  const routes: Record<string, { handler: RouteHandler; auth: boolean }> = postRoutes;
 
   // ============================================================================
   // Request handler
@@ -204,6 +206,11 @@ export async function startMidnamesServer<TSubject>(
       const nonce = url.slice("/claim/".length);
       if (!nonce) { MidnamesHttp.json(res, 400, { error: "Missing nonce" }); return; }
       await handleClaim(req, res, nonce);
+      return;
+    }
+
+    if (req.method === "GET" && url === "/challenge") {
+      await challengeRoute.handler(req, res);
       return;
     }
 

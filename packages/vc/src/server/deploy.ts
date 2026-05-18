@@ -1,4 +1,4 @@
-import { createIssuerKeyPair, parseUncompressedKey } from "@midnames/sdk";
+import { createIssuerKeyPair, parseUncompressedKey } from "@midnames/vc/core";
 import { logger } from "./logger.js";
 import {
   buildWalletAndWaitForFunds,

@@ -1,12 +1,12 @@
 /**
- * Example: diploma issuance server built on @midnames/server.
+ * Example: diploma issuance server built on @midnames/vc/server.
  *
  * Run (after `compact compile` and `bun install`):
  *   MIDNIGHT_WALLET_SEED=<hex> API_KEY=<secret> bun run examples/diploma-server.ts
  */
 
 import { z } from "zod";
-import { startMidnamesServer } from "@midnames/server";
+import { startMidnamesServer } from "@midnames/vc/server";
 
 // ============================================================================
 // 1. Define your credential subject schema

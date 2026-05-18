@@ -1,0 +1,5 @@
+packages:
+  - packages/vc
+  - contract
+  - utils
+  - midnames-cli

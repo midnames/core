@@ -1,6 +1,6 @@
 import { canonicalize } from "json-canonicalize";
-import { createIssuerKeyPair, signP256 } from "@midnames/sdk";
-import type { VerifiableCredential, Issuer } from "@midnames/sdk";
+import { createIssuerKeyPair, signP256 } from "@midnames/vc/core";
+import type { VerifiableCredential, Issuer } from "@midnames/vc/core";
 import * as MidnamesServerConstants from "../constants.js";
 
 export interface IssueCredentialOptions {

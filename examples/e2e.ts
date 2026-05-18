@@ -12,8 +12,8 @@
  */
 
 import { randomBytes } from "node:crypto";
-import { startMidnamesServer } from "@midnames/server";
-import { createIssuerKeyPair, signP256, CryptoPrimitives, parseUncompressedKey } from "@midnames/sdk";
+import { startMidnamesServer } from "@midnames/vc/server";
+import { createIssuerKeyPair, signP256, CryptoPrimitives, parseUncompressedKey } from "@midnames/vc/core";
 
 const PORT = Number(process.env.PORT ?? 3000);
 const BASE = `http://localhost:${PORT}`;
@@ -154,7 +154,7 @@ if (!verifyRes.verified) console.error(`  error: ${verifyRes.error}`);
 // ── Step 7: Get a challenge nonce ─────────────────────────────────────────────
 
 console.log("\n[7] Requesting challenge...");
-const challengeRes = await post("/challenge", {});
+const challengeRes = (await fetch(`${BASE}/challenge`).then((r) => r.json())) as Record<string, unknown>;
 const challenge = challengeRes.challenge as string;
 console.log(`  challenge: ${challenge}`);
 

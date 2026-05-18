@@ -8,14 +8,13 @@ import { levelPrivateStateProvider } from "@midnight-ntwrk/midnight-js-level-pri
 import { setNetworkId } from "@midnight-ntwrk/midnight-js-network-id";
 import { NodeZkConfigProvider } from "@midnight-ntwrk/midnight-js-node-zk-config-provider";
 import type { MidnightProvider, WalletProvider } from "@midnight-ntwrk/midnight-js-types";
-import type { NetworkId } from "@midnight-ntwrk/wallet-sdk-abstractions";
+import { InMemoryTransactionHistoryStorage, type NetworkId } from "@midnight-ntwrk/wallet-sdk-abstractions";
 import { DustWallet } from "@midnight-ntwrk/wallet-sdk-dust-wallet";
-import { WalletFacade } from "@midnight-ntwrk/wallet-sdk-facade";
+import { WalletFacade, WalletEntrySchema, mergeWalletEntries } from "@midnight-ntwrk/wallet-sdk-facade";
 import { HDWallet, Roles } from "@midnight-ntwrk/wallet-sdk-hd";
 import { ShieldedWallet } from "@midnight-ntwrk/wallet-sdk-shielded";
 import {
   createKeystore,
-  InMemoryTransactionHistoryStorage,
   PublicKey as UnshieldedPublicKey,
   type UnshieldedKeystore,
   UnshieldedWallet,
@@ -345,7 +344,7 @@ export const initWalletWithSeed = async (seed: Buffer, config: Config): Promise<
     provingServerUrl: new URL(config.proofServer),
     indexerClientConnection: { indexerHttpUrl: config.indexer, indexerWsUrl: config.indexerWS },
     indexerUrl: config.indexerWS,
-    txHistoryStorage: new InMemoryTransactionHistoryStorage(),
+    txHistoryStorage: new InMemoryTransactionHistoryStorage(WalletEntrySchema, mergeWalletEntries),
   };
 
   const cache = readWalletCache();

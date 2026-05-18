@@ -1,0 +1,44 @@
+# Local Midnight environment for the M6 @midnames/vc benchmark.
+# Mirrors midnames-frontend/sdk/packages/contract/src/test/e2e/undeployed.yml
+# (the image set known to work with this repo's SDK pins).
+services:
+  proof-server:
+    image: 'midnightntwrk/proof-server:8.0.3'
+    container_name: "bench-proof-server"
+    ports:
+      - "6300:6300"
+
+  indexer:
+    image: 'midnightntwrk/indexer-standalone:4.0.0'
+    container_name: "bench-indexer"
+    ports:
+      - '8088:8088'
+    environment:
+      RUST_LOG: "indexer=info,chain_indexer=info,indexer_api=info,wallet_indexer=info,indexer_common=info,fastrace_opentelemetry=info,info"
+      # Random 32-byte hex secret required by the config schema; not for secure use.
+      APP__INFRA__SECRET: "303132333435363738393031323334353637383930313233343536373839303132"
+      APP__INFRA__NODE__URL: "ws://node:9944"
+    healthcheck:
+      test: ["CMD-SHELL", "cat /var/run/indexer-standalone/running"]
+      start_interval: "5s"
+      interval: "5s"
+      timeout: "2s"
+      retries: 2
+      start_period: 5s
+    depends_on:
+      node:
+        condition: service_started
+
+  node:
+    image: 'midnightntwrk/midnight-node:0.22.1'
+    container_name: "bench-node"
+    ports:
+      - "9944:9944"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9944/health"]
+      interval: 2s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    environment:
+      CFG_PRESET: "dev"

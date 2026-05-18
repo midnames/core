@@ -7,7 +7,7 @@
  *   LOG_LEVEL=debug MIDNIGHT_WALLET_SEED=<…> bun run examples/deploy-issuer.ts   # verbose
  */
 
-import { deployDid } from "@midnames/server";
+import { deployDid } from "@midnames/vc/server";
 
 const start = Date.now();
 const heartbeat = setInterval(() => {

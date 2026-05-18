@@ -1,5 +1,5 @@
 import * as z from "zod";
-import type { VerifiableCredential } from "@midnames/sdk";
+import type { VerifiableCredential } from "@midnames/vc/core";
 
 const ISODateString = z.string().refine((v) => !isNaN(Date.parse(v)), "Must be a valid date");
 

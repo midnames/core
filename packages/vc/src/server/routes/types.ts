@@ -11,7 +11,7 @@ export interface CredentialRouteContext<TSubject> {
   credentialType: string[];
   validateSubject: (raw: unknown) => TSubject;
   buildCredential: (subject: TSubject, holderDid: string, issuerDid: string) => TSubject & { id: string };
-  onIssued?: (vc: import("@midnames/sdk").VerifiableCredential<TSubject>) => Promise<void> | void;
+  onIssued?: (vc: import("@midnames/vc/core").VerifiableCredential<TSubject>) => Promise<void> | void;
 }
 
 export interface DidRouteContext {

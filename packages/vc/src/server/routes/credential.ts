@@ -14,7 +14,7 @@ import { issueCredential } from "../handlers/issueCredential.js";
 import * as MidnamesHttp from "../utils/http.js";
 import * as MidnamesStore from "../stores/index.js";
 
-import { IssuerClient, InMemorySessionStore } from "@midnames/sdk";
+import { IssuerClient, InMemorySessionStore } from "@midnames/vc/core";
 
 import type { CredentialRouteContext } from "./types.js";
 

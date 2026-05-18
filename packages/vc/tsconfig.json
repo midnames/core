@@ -11,9 +11,10 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@midnames/sdk": ["../sdk/src/index.ts"]
+      "@midnames/vc/core": ["./src/core/index.ts"],
+      "@midnames/vc/server": ["./src/server/index.ts"]
     }
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "src/managed"]
+  "exclude": ["node_modules", "dist", "src/server/managed"]
 }

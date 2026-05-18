@@ -1,0 +1,66 @@
+{
+  "name": "@midnames/vc",
+  "version": "0.1.0",
+  "description": "Midnames VC issuance: framework-agnostic core (crypto + protocol) and HTTP server for DID + credential issuance/verification on Midnight",
+  "type": "module",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "dist",
+    "contracts",
+    "README.md"
+  ],
+  "exports": {
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js",
+      "default": "./dist/core/index.js"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.js",
+      "default": "./dist/server/index.js"
+    }
+  },
+  "scripts": {
+    "prebuild": "compact compile +0.31.0 ../../../midnight-repos/midnight-did/contract/src/did.compact src/server/managed/did && compact compile +0.31.0 contracts/revocation-list.compact src/server/managed/revocation-list",
+    "build": "tsc -b tsconfig.build.json",
+    "postbuild": "rm -rf dist/server/managed && cp -r src/server/managed dist/server/managed",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@midnight-ntwrk/compact-js": "2.5.0",
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/ledger-v8": "8.1.0",
+    "@midnight-ntwrk/midnight-js-contracts": "4.0.4",
+    "@midnight-ntwrk/midnight-js-http-client-proof-provider": "4.0.4",
+    "@midnight-ntwrk/midnight-js-indexer-public-data-provider": "4.0.4",
+    "@midnight-ntwrk/midnight-js-level-private-state-provider": "4.0.4",
+    "@midnight-ntwrk/midnight-js-network-id": "4.0.4",
+    "@midnight-ntwrk/midnight-js-node-zk-config-provider": "4.0.4",
+    "@midnight-ntwrk/midnight-js-types": "4.0.4",
+    "@midnight-ntwrk/wallet-sdk-abstractions": "2.1.0",
+    "@midnight-ntwrk/wallet-sdk-dust-wallet": "4.1.0",
+    "@midnight-ntwrk/wallet-sdk-facade": "4.0.1",
+    "@midnight-ntwrk/wallet-sdk-hd": "3.0.2",
+    "@midnight-ntwrk/wallet-sdk-shielded": "3.0.1",
+    "@midnight-ntwrk/wallet-sdk-unshielded-wallet": "3.1.0",
+    "@noble/curves": "^1.9.2",
+    "bip39": "^3.1.0",
+    "dotenv": "^17.3.1",
+    "ethers": "^6.16.0",
+    "jose": "^6.2.1",
+    "json-canonicalize": "^2.0.0",
+    "rxjs": "^7.8.1",
+    "ws": "^8.18.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.5.10",
+    "typescript": "^5.8.3"
+  }
+}
